@@ -1,3 +1,16 @@
+const $ = s => document.querySelector(s);
+const api = async (path, options={}) => {
+  const response = await fetch(`/api${path}`, { ...options, headers: { Authorization: `Basic ${btoa('admin@forgeplm.local:forgeplm-demo')}`, 'Content-Type':'application/json', ...(options.headers||{}) } });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Request failed');
+  return data;
+};
+let parts = [];
+let changes = [];
+function statePill(state){ return `<span class="pill ${state==='Released'||state==='Approved'?'released':'inwork'}">${state}</span>` }
+function renderTables(){
+  $('#partsTable').innerHTML=parts.map(p=>`<tr><td><strong>${p.number}</strong></td><td>${p.name}</td><td>${p.revision}</td><td>${statePill(p.state)}</td><td>${p.owner}</td><td>${new Date(p.updated_at).toLocaleDateString()}</td></tr>`).join('');
+  $('#changesTable').innerHTML=changes.map(c=>`<tr><td><strong>${c.number}</strong></td><td>${c.title}</td><td>${c.type}</td><td>${statePill(c.state)}</td><td>${c.assignee || 'Unassigned'}</td><td>${c.due_date || '—'}</td></tr>`).join('');
 let currentUser;
 let parts = [];
 let changes = [];
@@ -45,12 +58,10 @@ const attention=[['↺','ECR-2026-042','Update battery enclosure venting','Due i
 $('#attentionList').innerHTML=attention.map((a,i)=>`<div class="attention-item"><div class="type-icon ${i===1?'blue':''}">${a[0]}</div><div><div class="item-title">${a[1]} · ${a[2]}</div><div class="item-meta">${a[3]}</div></div><span class="status ${a[4]}">${a[5]}</span></div>`).join('');
 const activities=['Alex Morgan promoted <strong>NX-200 Assembly</strong> to Released.','Lin Chen added revision C to <strong>Motor control board</strong>.','Priya Shah submitted <strong>ECR-2026-042</strong> for review.','Forge Assist matched 12 existing parts to your latest search.'];
 $('.activity-list').innerHTML=activities.map((a,i)=>`<div class="activity-row"><div class="activity-dot">${['↑','✎','↺','✦'][i]}</div><p>${a}<time>${i+1} hour${i?'s':''} ago</time></p></div>`).join('');
-const bom=[['▾','NX-200-001','NX-200 Assembly','1 EA',0],['▾','ME-200-010','Main chassis','1 EA',1],['','ME-120-311','M8 hex bolt, stainless','24 EA',2],['','ME-121-107','Washer, M8','24 EA',2],['','EL-440-008','Motor control board','1 EA',1],['','EL-440-015','48V battery pack','1 EA',1]];
-$('#bomTree').innerHTML=bom.map((b,i)=>`<div class="tree-item ${i===0?'selected':''}" style="padding-left:${7+b[4]*25}px" data-code="${b[1]}" data-name="${b[2]}" data-qty="${b[3]}"><span>${b[0]||'·'}</span><span class="tree-code">${b[1]}</span><span class="tree-name">${b[2]}</span><span class="tree-qty">${b[3]}</span></div>`).join('');
-document.querySelectorAll('.tree-item').forEach(e=>e.addEventListener('click',()=>{document.querySelectorAll('.tree-item').forEach(x=>x.classList.remove('selected'));e.classList.add('selected');$('#selectedPart').textContent=e.dataset.code;$('.detail-name').textContent=e.dataset.name;$('#detailQty').textContent=e.dataset.qty}));
-const flows=[['New Product Release','Routes designs through engineering, quality, and manufacturing approval.','8 active','93% on time'],['Engineering Change','Evaluates impacts and controls implementation of technical changes.','5 active','2 approvals waiting'],['Supplier Qualification','Validates new suppliers against required evidence and standards.','3 active','100% on time']];
-$('#workflowCards').innerHTML=flows.map(f=>`<article class="panel workflow-card"><span class="pill released">ACTIVE</span><h3>${f[0]}</h3><p>${f[1]}</p><footer><span>${f[2]}</span><span>${f[3]}</span></footer></article>`).join('');
+function renderBom(bom){ $('#bomTree').innerHTML=bom.map((b,i)=>`<div class="tree-item ${i===0?'selected':''}" style="padding-left:${7+b.depth*25}px" data-code="${b.number}" data-name="${b.name}" data-qty="${b.quantity} ${b.unit}"><span>${b.depth===0?'▾':'·'}</span><span class="tree-code">${b.number}</span><span class="tree-name">${b.name}</span><span class="tree-qty">${b.quantity} ${b.unit}</span></div>`).join(''); document.querySelectorAll('.tree-item').forEach(e=>e.addEventListener('click',()=>{document.querySelectorAll('.tree-item').forEach(x=>x.classList.remove('selected'));e.classList.add('selected');$('#selectedPart').textContent=e.dataset.code;$('.detail-name').textContent=e.dataset.name;$('#detailQty').textContent=e.dataset.qty})); }
+function renderWorkflows(flows){ $('#workflowCards').innerHTML=flows.map(f=>`<article class="panel workflow-card"><span class="pill released">${f.active?'ACTIVE':'INACTIVE'}</span><h3>${f.name}</h3><p>${f.description || ''}</p><footer><span>${f.task_count || 0} tasks</span><span>${f.pending_count || 0} pending</span></footer></article>`).join(''); }
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
+function runSearch(){const query=$('#globalSearch').value.trim();if(!query)return; const q=query.toLowerCase();const hits=parts.filter(p=>Object.values(p).join(' ').toLowerCase().includes(q));$('#searchResult').innerHTML=hits.length?`<strong>Forge Assist found ${hits.length} matching item${hits.length>1?'s':''}:</strong> ${hits.map(h=>`${h.number} — ${h.name}`).join(' · ')}`:`Forge Assist found no exact match for “${query}”. Try a part number, material, document, or change ID.`}
 function escapeHtml(value=''){const element=document.createElement('span');element.textContent=value;return element.innerHTML}
 function renderSearchResults(payload){
   const results=payload.results||[];
@@ -75,6 +86,7 @@ $('#searchBtn').addEventListener('click',runSearch);$('#globalSearch').addEventL
 window.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#globalSearch').focus()}});
 const modal=$('#modal');function openModal(type='Part'){ $('#modalType').value=type;$('#modalEyebrow').textContent='CREATE';$('#modalTitle').textContent=`Create ${type}`;modal.showModal();$('#modalName').focus() }
 $('#createBtn').addEventListener('click',()=>openModal());$('#newPartBtn').addEventListener('click',()=>openModal('Part'));$('#newChangeBtn').addEventListener('click',()=>openModal('Change Request'));
-$('#modalSubmit').addEventListener('click',()=>{if(!$('#modalName').value.trim())return;toast(`${$('#modalType').value} “${$('#modalName').value}” created as a draft.`);$('#modalName').value=''});
+$('#modalSubmit').addEventListener('click',async e=>{e.preventDefault();const name=$('#modalName').value.trim(), type=$('#modalType').value;if(!name)return;try { if(type==='Part') { const number=`PRT-${Date.now().toString().slice(-6)}`; await api('/parts',{method:'POST',body:JSON.stringify({number,name})}); } else if(type==='Change Request') { const number=`ECR-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`; await api('/changes',{method:'POST',body:JSON.stringify({number,title:name})}); } else { toast('Document API is available for metadata governance and will be connected to this form next.'); return; } await loadData(); modal.close(); $('#modalName').value=''; toast(`${type} “${name}” created as a draft.`); } catch(error) { toast(error.message); }});
 $('#exportBtn').addEventListener('click',()=>toast('Workspace report exported successfully.'));
-renderTables();
+async function loadData(){ try { [parts,changes] = await Promise.all([api('/parts'),api('/changes')]); const [bom,flows] = await Promise.all([api('/bom'),api('/workflows')]); renderTables(); renderBom(bom); renderWorkflows(flows); } catch(error) { $('#searchResult').textContent=`Unable to load workspace data: ${error.message}`; } }
+loadData();

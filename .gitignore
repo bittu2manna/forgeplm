@@ -1,3 +1,5 @@
+server/forgeplm.db
+server/forgeplm.db-*
 data/object-storage/
 
 __pycache__/
