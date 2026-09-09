@@ -15,12 +15,33 @@ A self-contained,  product lifecycle management workspace prototype for small en
 
 ## Run locally
 
-No install or build is needed. Serve the directory with any static server:
+No install is needed. Start the application server:
 
 ```bash
-python3 -m http.server 8000
+npm start
 ```
 
+Open [http://localhost:8000](http://localhost:8000). The application uses in-memory sample data and sessions, so records and sign-ins reset when the server restarts.
+
+## Authentication and access control
+
+Run the authenticated application with:
+
+```bash
+npm start
+```
+
+The prototype has password sign-in backed by server-side, scrypt-hashed demo credentials. It uses an opaque, `HttpOnly`, `SameSite=Lax` session cookie (eight-hour lifetime) and protects every `/api/*` record endpoint on the server. The five built-in roles map to permissions as follows:
+
+| Role | Permissions |
+| --- | --- |
+| Engineering Admin | read, create, revise, release, approve, administer |
+| Design Engineer | read, create, revise |
+| Manufacturing Engineer | read, create, revise, release |
+| Quality Reviewer | read, approve |
+| Supplier | read |
+
+The sign-in page lists disposable local demo credentials. They are intended only for this self-contained prototype; use a persistent user store, TLS, CSRF protection, rate limiting, and an external OIDC provider before deploying in production.
 Open [http://localhost:8000](http://localhost:8000). The application is a front-end prototype with in-memory sample data; it does not yet include a database, user authentication, backend APIs, or production deployment configuration.
 
 ## API prototype
