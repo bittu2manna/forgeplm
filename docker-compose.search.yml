@@ -1,0 +1,11 @@
+services:
+  search-db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: forgeplm
+      POSTGRES_USER: forgeplm
+      POSTGRES_PASSWORD: forgeplm
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-search-schema.sql:ro
