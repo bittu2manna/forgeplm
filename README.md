@@ -1,5 +1,6 @@
 # ForgePLM
 
+A self-contained product lifecycle management workspace prototype for small engineering and manufacturing teams.
 A self-contained, Teamcenter-inspired product lifecycle management workspace prototype for small engineering and manufacturing teams.
 
 ## Included modules
