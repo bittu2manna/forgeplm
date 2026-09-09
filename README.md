@@ -13,10 +13,10 @@ A self-contained, Teamcenter-inspired product lifecycle management workspace pro
 
 ## Run locally
 
-No install or build is needed. Serve the directory with any static server:
+The workspace is served by a zero-dependency Node.js API backed by SQLite:
 
 ```bash
-python3 -m http.server 8000
+npm start
 ```
 
-Open [http://localhost:8000](http://localhost:8000). The application is a front-end prototype with in-memory sample data; it does not yet include a database, user authentication, backend APIs, or production deployment configuration.
+Open [http://localhost:3000](http://localhost:3000). The seeded development account is `admin@forgeplm.local` with password `forgeplm-demo`; the browser demo uses this account automatically. API routes require HTTP Basic authentication and expose CRUD endpoints for parts, change requests, and workflow definitions, plus read APIs for BOM, classifications, and audit events. SQL migrations live in `server/migrations` and run at startup. Released part revisions are immutable through the parts API; a formal change request must be raised before a new revision can be approved.
