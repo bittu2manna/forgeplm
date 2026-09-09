@@ -5,4 +5,5 @@
   "description": "ForgePLM prototype with session-based authentication and RBAC",
   "scripts": { "start": "node server.js", "test": "node --test server.test.js" },
   "engines": { "node": ">=18" }
+  "scripts": { "start": "node server/index.js", "test": "node --test" }
 }

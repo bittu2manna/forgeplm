@@ -1,0 +1,4 @@
+data/object-storage/
+
+__pycache__/
+*.py[cod]
