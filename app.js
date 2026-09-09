@@ -30,7 +30,26 @@ document.querySelectorAll('.tree-item').forEach(e=>e.addEventListener('click',()
 const flows=[['New Product Release','Routes designs through engineering, quality, and manufacturing approval.','8 active','93% on time'],['Engineering Change','Evaluates impacts and controls implementation of technical changes.','5 active','2 approvals waiting'],['Supplier Qualification','Validates new suppliers against required evidence and standards.','3 active','100% on time']];
 $('#workflowCards').innerHTML=flows.map(f=>`<article class="panel workflow-card"><span class="pill released">ACTIVE</span><h3>${f[0]}</h3><p>${f[1]}</p><footer><span>${f[2]}</span><span>${f[3]}</span></footer></article>`).join('');
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800)}
-function runSearch(){const query=$('#globalSearch').value.trim();if(!query)return; const q=query.toLowerCase();const hits=parts.filter(p=>p.join(' ').toLowerCase().includes(q));$('#searchResult').innerHTML=hits.length?`<strong>Forge Assist found ${hits.length} matching item${hits.length>1?'s':''}:</strong> ${hits.map(h=>`${h[0]} — ${h[1]}`).join(' · ')}`:`Forge Assist found no exact match for “${query}”. Try a part number, material, document, or change ID.`}
+function escapeHtml(value=''){const element=document.createElement('span');element.textContent=value;return element.innerHTML}
+function renderSearchResults(payload){
+  const results=payload.results||[];
+  if(!results.length){$('#searchResult').innerHTML=`<p class="search-summary">No permitted records matched “${escapeHtml(payload.query)}”. Try a part number, material, document, or change ID.</p>`;return}
+  $('#searchResult').innerHTML=`<p class="search-summary"><strong>Forge Assist</strong> found ${results.length} grounded, permitted result${results.length===1?'':'s'}.</p><div class="grounded-results">${results.map(result=>`<a class="grounded-result" href="${escapeHtml(result.record_url)}"><span class="result-type">${escapeHtml(result.record_type)}</span><span class="result-body"><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(result.source_snippet)}</small></span><span class="result-meta">${result.revision?`Rev. ${escapeHtml(result.revision)} · `:''}${escapeHtml(result.lifecycle_state||'')}</span></a>`).join('')}</div>`;
+}
+async function runSearch(){
+  const query=$('#globalSearch').value.trim();if(!query)return;
+  const result=$('#searchResult');result.innerHTML='<p class="search-summary">Searching permitted records…</p>';
+  // Production pages inject a short-lived token after the normal sign-in flow;
+  // the client never chooses access groups and does not fall back to local data.
+  const token=window.FORGE_ASSIST_TOKEN;
+  if(!token){result.innerHTML='<p class="search-summary search-error">Sign in is required to search Forge Assist.</p>';return}
+  try{
+    const response=await fetch(`/api/search?q=${encodeURIComponent(query)}`,{headers:{Authorization:`Bearer ${token}`,Accept:'application/json'},credentials:'same-origin'});
+    const payload=await response.json();
+    if(!response.ok)throw new Error(payload.error||'search_failed');
+    renderSearchResults(payload);
+  }catch(error){result.innerHTML='<p class="search-summary search-error">Search is temporarily unavailable. No local or unrestricted results were shown.</p>'}
+}
 $('#searchBtn').addEventListener('click',runSearch);$('#globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')runSearch()});
 window.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#globalSearch').focus()}});
 const modal=$('#modal');function openModal(type='Part'){ $('#modalType').value=type;$('#modalEyebrow').textContent='CREATE';$('#modalTitle').textContent=`Create ${type}`;modal.showModal();$('#modalName').focus() }
